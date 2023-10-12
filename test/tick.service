@@ -1,0 +1,8 @@
+[Unit]
+Description=script updates timestamp in /tmp/tick every 10 seconds when running
+
+[Service]
+ExecStart=/bin/bash /usr/sbin/tick.sh
+
+[Install]
+WantedBy=multi-user.target
