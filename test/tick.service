@@ -2,7 +2,7 @@
 Description=script updates timestamp in /tmp/tick every 10 seconds when running
 
 [Service]
-ExecStart=/bin/bash /usr/sbin/tick.sh
+ExecStart=/bin/bash /usr/sbin/tick_run.sh
 
 [Install]
 WantedBy=multi-user.target
