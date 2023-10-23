@@ -5,6 +5,6 @@ date > tick_start
 while true
 	do
 	date > tick_last
-	cat /tmp/tick
+	cat tick_last
 	sleep 10
 done
