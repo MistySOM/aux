@@ -1,10 +1,10 @@
 #!/bin/sh
 
 
-date > /tmp/tick_start
+date > tick_start
 while true
 	do
-	date > /tmp/tick
+	date > tick_last
 	cat /tmp/tick
 	sleep 10
 done
