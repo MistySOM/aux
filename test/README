@@ -1,5 +1,15 @@
-copy tick.sh to /usr/sbin/
+# Usage
+
+## as a service
+copy tick_run.sh to /usr/sbin/
 copy tick.service to /etc/systemd/system/
 exec systemctl-reload
 exec systemctl enable tick.service
 verify that /tmp/tick_start containsthe current timestamp
+
+## time measurment
+
+To measure the time "live", just start the script with `./ticks_run.sh` and it will crearte two files:
+
+- `ticks_last` that contains the last timestamp, updated every 10 seconds
+- `ticks_start` that contains the time, when the script was started
