@@ -6,5 +6,6 @@ while true
 	do
 	date > tick_last
 	cat tick_last
-	sleep 10
+ 	uptime
+	sleep 60
 done
