@@ -28,46 +28,49 @@ To run the script, follow the instructions below:
    python3 ei2gst-drpai.py yolov5
    ```
 
-   > [!TIP]
-   > If the script is run correctly, it would generate the folder with the following contents:
-   >
-   > ```
-   > . 
-   > ├── model-parameters
-   > │   ├── model_metadata.h
-   > │   └── model_variables.h
-   > ├── tflite-model
-   > │   └── drpai_model.h
-   > ├── yolov5
-   > │   ├── aimac_desc.bin
-   > │   ├── drp_desc.bin
-   > │   ├── drp_param.bin
-   > │   ├── yolov5_addrmap_intm.txt
-   > │   ├── yolov5_data_in_list.txt
-   > │   ├── yolov5_data_out_list.txt
-   > │   ├── yolov5_drpcfg.mem
-   > │   ├── yolov5_labels.txt
-   > │   ├── yolov5.part2
-   > │   └── yolov5_weight.dat
-   > └── ei2gst-drpai.py 
-   > ```
+   <details>
+      <summary>Example Output</summary>
+
+      If the script is run correctly, it would generate the folder with the following contents:
+      ```
+      . 
+      ├── model-parameters
+      │   ├── model_metadata.h
+      │   └── model_variables.h
+      ├── tflite-model
+      │   └── drpai_model.h
+      ├── yolov5
+      │   ├── aimac_desc.bin
+      │   ├── drp_desc.bin
+      │   ├── drp_param.bin
+      │   ├── yolov5_addrmap_intm.txt
+      │   ├── yolov5_data_in_list.txt
+      │   ├── yolov5_data_out_list.txt
+      │   ├── yolov5_drpcfg.mem
+      │   ├── yolov5_labels.txt
+      │   ├── yolov5.part2
+      │   └── yolov5_weight.dat
+      └── ei2gst-drpai.py 
+      ```
+   </details>
    
 3. As each model needs a different way of interpretation, 
    create a file in the model's directory with the name `<model>/<model>_post_process_params.txt`
    to adjust the post-processing parameters.
 
-   > [!TIP]
-   > For example, YOLOv5 post-processing parameters is a file `yolov5/yolov5_post_process_params.txt` and contains the following lines: 
-   >
-   > ```bash
-   > [dynamic_library]
-   > libgstdrpai-yolo.so
-   > 
-   > [best_class_prediction_algorithm]
-   > sigmoid
-   >   
-   > [anchor_divide_size]
-   > none
-   > ```
-   
+   <details>
+      <summary>Example</summary>
+      YOLOv5 post-processing parameters are in the file `yolov5/yolov5_post_process_params.txt` and contains the following lines:
+
+      ```bash
+      [dynamic_library]
+      libgstdrpai-yolo.so
+      
+      [best_class_prediction_algorithm]
+      sigmoid
+        
+      [anchor_divide_size]
+      none
+      ```
+   </details>
    
