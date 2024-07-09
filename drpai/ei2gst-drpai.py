@@ -1,6 +1,7 @@
 import gc
 import os
 import shutil
+import argparse
 
 
 def csv_2_bytearray(s: str) -> bytearray:
@@ -173,5 +174,10 @@ class EdgeImpulse2GstDRPAI:
 
 
 if __name__ == '__main__':
-    ei = EdgeImpulse2GstDRPAI("yolov5")
+    parser = argparse.ArgumentParser(prog='EdgeImpulse2GstDRPAI',
+                                     description='EdgeImpulse DRPAI Deployment to GStreamer DRPAI plugin translator')
+    parser.add_argument('model_name', help='The folder and prefix of files to create.')
+    args = parser.parse_args()
+
+    ei = EdgeImpulse2GstDRPAI(args.model_name)
     ei.run()
