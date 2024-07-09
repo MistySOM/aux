@@ -1,4 +1,4 @@
-# EdgeImpulse DRPAI Deployment to GStreamer DRPAI plugin translator
+# 'EdgeImpulse DRPAI Deployment' to<br>'GStreamer DRPAI Plugin' translator
 
 The python script is a translation layer to make the EdgeImpulse deployment usable for the 
 [Gstreamer DRPAI Plugin](https://github.com/MistySOM/gstreamer1.0-drpai). 
