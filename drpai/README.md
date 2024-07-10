@@ -66,11 +66,8 @@ To run the script, follow the instructions below:
       [dynamic_library]
       libgstdrpai-yolo.so
       
-      [best_class_prediction_algorithm]
-      sigmoid
-        
-      [anchor_divide_size]
-      none
+      [yolo_version]
+      5
       ```
    </details>
    

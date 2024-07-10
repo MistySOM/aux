@@ -154,6 +154,7 @@ class EdgeImpulse2GstDRPAI:
         file_path = f"{self.model_name}/{self.model_name}_data_out_list.txt"
         grid_sizes = [k for k in self.var_list.keys() if k.startswith("NUM_GRID_")]
         assert len(grid_sizes) > 0, "The loaded drpai_model.h doesn't have the required output grids."
+        grid_sizes.reverse()
 
         print("  Writing file: " + file_path)
         with open(file_path, "wt") as f:
