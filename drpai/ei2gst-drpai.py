@@ -1,7 +1,8 @@
 import gc
 import os
-import shutil
 import argparse
+import tflite_runtime.interpreter as tflite
+import numpy as np
 
 
 def csv_2_bytearray(s: str) -> bytearray:
@@ -30,6 +31,51 @@ def csv_2_bytearray(s: str) -> bytearray:
     return r
 
 
+def get_grid_anchors(interpreter: tflite.Interpreter, grids: list[int]) -> (int, list[list[int]]):
+    """
+    Retrieves grid anchors from the TensorFlow Lite interpreter.
+
+    This method iterates through the tensors in the interpreter to find a tensor
+    that matches the shape corresponding to one of the provided grids. It returns
+    the grid size and the anchor values if a matching tensor is found.
+
+    Args:
+        interpreter (tflite.Interpreter): The TensorFlow Lite interpreter.
+        grids (list[int]): A list of grid sizes to search for.
+
+    Returns:
+        (int, list[list[int]]): The first found grid size and its list of anchor values.
+
+    Raises:
+        ValueError: If no anchors are found for the provided grids in the interpreter.
+
+    Example:
+        >>> interpreter = tflite.Interpreter(model_path='yolov5.part2')
+        >>> grids = [20, 40, 80]
+        >>> __get_grid_anchors(interpreter, grids)
+        [[116.0, 90.0], [156.0, 198.0], [373.0, 326.0]]
+    """
+    tensor_index = 0
+
+    # Loop through all tensors
+    # Note: ValueError is raised if tensor_index is out of bounds
+    while True:
+        try:
+            # Get the tensor and its shape at the current index
+            tensor = interpreter.get_tensor(tensor_index)
+            shape = tensor.shape
+            tensor_index += 1
+
+            # Check if the tensor shape matches any of the provided grid sizes
+            for g in grids:
+                if np.array_equal(shape, [1, 3, g, g, 2]):
+                    # Return the found grid and anchor values
+                    return g, [list(tensor[0][j][0][0]) for j in range(3)]
+
+        except ValueError:
+            raise "No anchors found for the provided grids not found in the interpreter."
+
+
 class EdgeImpulse2GstDRPAI:
     """
     Converts an EdgeImpulse deployment to GStreamer DRPAI plugin using a `model_name` and the `run()` function.
@@ -47,9 +93,9 @@ class EdgeImpulse2GstDRPAI:
         """
         self.var_list = dict()  # Dictionary to hold keys and values read from header files
         self.model_name = model_name
+        self.model_classification = None    # This variable is filled after running gen_postprocess_params_txt()
         print(f"Creating folder: {model_name}")
-        shutil.rmtree(model_name, ignore_errors=True)
-        os.mkdir(model_name)
+        os.makedirs(model_name, exist_ok=True)
 
     def __arrayname_2_filename(self, array_name: str) -> str:
         """
@@ -347,13 +393,13 @@ class EdgeImpulse2GstDRPAI:
         file_path = f"{self.model_name}/{self.model_name}_post_process_params.txt"
 
         # Retrieve the model classification from var_list dictionary
-        model_classification = self.var_list["EI_CLASSIFIER_OBJECT_DETECTION_LAST_LAYER"]
+        self.model_classification = self.var_list["EI_CLASSIFIER_OBJECT_DETECTION_LAST_LAYER"]
         post_process_library = None
         model_version = None
         iou_threshold = None
 
         # Determine the post-processing library and model version based on classification
-        if "yolov5" in model_classification.lower():
+        if "yolov5" in self.model_classification.lower():
             post_process_library = "libgstdrpai-yolo.so"
             model_version = "5"
 
@@ -362,13 +408,13 @@ class EdgeImpulse2GstDRPAI:
             assert float(iou_threshold) >= 0, \
                 "The loaded model_variables.h doesn't have the required output iou_threshold."
 
-        elif "fomo" in model_classification.lower():
+        elif "fomo" in self.model_classification.lower():
             # TODO: Add other libraries
             pass
 
         # Ensure the post-processing library and model version are supported
-        assert post_process_library is not None, f"The script doesn't support classification '{model_classification}'."
-        assert model_version is not None, f"The script doesn't support classification version '{model_classification}'."
+        assert post_process_library is not None, f"The script doesn't support classification '{self.model_classification}'."
+        assert model_version is not None, f"The script doesn't support classification version '{self.model_classification}'."
 
 
         print("  Writing file: " + file_path)
@@ -382,6 +428,43 @@ class EdgeImpulse2GstDRPAI:
                     "[iou_threshold]\n" +
                     iou_threshold)
 
+    def gen_anchors_txt(self):
+        """
+        Generates a `model_anchors.txt` file with anchor values.
+
+        This method reads the YOLOv5 model, extracts anchor values for different grid sizes,
+        and writes them to a text file.
+        """
+        model_path = f"{self.model_name}/yolov5.part2"
+
+        print("Reading file: " + model_path)
+
+        # Initialize the TensorFlow Lite interpreter for the YOLOv5 model
+        interpreter = tflite.Interpreter(model_path=model_path)
+        interpreter.allocate_tensors()
+
+        # Retrieve grid sizes from var_list dictionary
+        grids = list()
+        i = 0
+        grid_var_key = f"NUM_GRID_{i+1}"
+        while ei.var_list.__contains__(grid_var_key):
+            grids.append(int(ei.var_list[grid_var_key]))
+            i += 1
+            grid_var_key = f"NUM_GRID_{i+1}"
+
+        file_path = f"{self.model_name}/{self.model_name}_anchors.txt"
+        print("  Writing file: " + file_path)
+
+        # Find anchor values and write them to the text file
+        with open(file_path, "wt") as f:
+            while len(grids) > 0:
+                g, anchors = get_grid_anchors(interpreter, grids)
+                if anchors is not None:
+                    for a in anchors:
+                        for b in a:
+                            f.write(f"{b}\n")
+                    grids.remove(g)
+
     def run(self):
         """
         Executes the full pipeline to generate necessary model files and parameters.
@@ -393,6 +476,7 @@ class EdgeImpulse2GstDRPAI:
         4. Generate the `model_labels.txt` file.
         5. Generate the `model_data_out_list.txt` file.
         6. Generate the `model_post_process_params.txt` file.
+        7. If the model classification is YOLO, generate the `model_anchors.txt` file.
 
         This method ensures that all necessary files and parameters are generated in the correct order.
         """
@@ -402,6 +486,8 @@ class EdgeImpulse2GstDRPAI:
         self.gen_labels_txt()
         self.gen_data_out_list_txt()
         self.gen_postprocess_params_txt()
+        if "yolo" in self.model_classification:
+            self.gen_anchors_txt()
 
 
 if __name__ == '__main__':
