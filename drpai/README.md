@@ -3,9 +3,6 @@
 The python script is a translation layer to make the EdgeImpulse deployment usable for the 
 [Gstreamer DRPAI Plugin](https://github.com/MistySOM/gstreamer1.0-drpai). 
 
-> [!NOTE]
-> There is no dependency and virtual environment required for the script to run.
-
 To run the script, follow the instructions below:
 
 1. Extract the deployment file in a way that the working directory would like below:
