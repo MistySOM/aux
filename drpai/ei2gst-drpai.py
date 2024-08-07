@@ -85,18 +85,21 @@ class EdgeImpulse2GstDRPAI:
         model_name (str): The name of the model to save.
     """
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, working_directory: str = '.'):
         """
         Initialises the class and recreates a directory with the name `model_name`
 
         Args:
             model_name (str): The name of the model to save.
+            working_directory (str): The directory path that contains 'tflite-model' and 'model-parameters' directories.
         """
         self.var_list = dict()  # Dictionary to hold keys and values read from header files
         self.model_name = model_name
+        self.working_directory = working_directory
+        self.model_path = f"{working_directory}/{model_name}"
         self.model_classification = None    # This variable is filled after running gen_postprocess_params_txt()
-        logging.info(f"Creating folder: {model_name}")
-        os.makedirs(model_name, exist_ok=True)
+        logging.info(f"Creating folder: {self.model_path}")
+        os.makedirs(self.model_path, exist_ok=True)
 
     def __arrayname_2_filename(self, array_name: str) -> str:
         """
@@ -120,7 +123,7 @@ class EdgeImpulse2GstDRPAI:
         array_name = array_name.replace("=", "")
         array_name = array_name.replace("{", "")
         partial_name = array_name.strip().split("_")
-        return f"{self.model_name}/{'_'.join(partial_name[:-1])}.{partial_name[-1]}"
+        return f"{self.model_path}/{'_'.join(partial_name[:-1])}.{partial_name[-1]}"
 
     def gen_drpai_model_files(self):
         """
@@ -145,7 +148,7 @@ class EdgeImpulse2GstDRPAI:
               Writing file: model/model.part2
         """
 
-        file_path = "tflite-model/drpai_model.h"
+        file_path = f"{self.working_directory}/tflite-model/drpai_model.h"
         logging.info("Reading file: " + file_path)
         output_file_size = 0        # the size of the last output file
         output_file_path = None     # the path of the last output file
@@ -194,7 +197,7 @@ class EdgeImpulse2GstDRPAI:
         This function must be called after `gen_drpai_model_files()`.
         """
 
-        file_path = "model-parameters/model_metadata.h"
+        file_path = f"{self.working_directory}/model-parameters/model_metadata.h"
         logging.info("Reading file: " + file_path)
         struct_variables = None     # A list of variable names when they are grouped in a structure
         with open(file_path, "rt") as f:
@@ -233,7 +236,7 @@ class EdgeImpulse2GstDRPAI:
                             # The struct definition is not finished yet; let's just hold the variable name
                             struct_variables.append(name)
 
-        file_path = "model-parameters/model_variables.h"
+        file_path = f"{self.working_directory}/model-parameters/model_variables.h"
         logging.info("Reading file: " + file_path)
         struct_variables = list()   # A list of variable names when they are grouped in a structure
         with (open(file_path, "rt") as f):
@@ -289,7 +292,7 @@ class EdgeImpulse2GstDRPAI:
 
         # We also need to store the address and sizes of each model file in `var_list` dictionary.
         # They are included in `model/model_addrmap_intm.txt` in a format of `NAME HEX_ADDRESS HEX_SIZE` lines.
-        file_path = f"{self.model_name}/{self.model_name}_addrmap_intm.txt"
+        file_path = f"{self.model_path}/{self.model_name}_addrmap_intm.txt"
         logging.info("Reading file: " + file_path)
         with open(file_path, "rt") as f:
             # Read the text file line by line.
@@ -311,7 +314,7 @@ class EdgeImpulse2GstDRPAI:
         Raises:
             AssertionError: If any required input items (`channels`, `width`, or `height`) are missing.
         """
-        file_path = f"{self.model_name}/{self.model_name}_data_in_list.txt"
+        file_path = f"{self.model_path}/{self.model_name}_data_in_list.txt"
 
         # Retrieve required variables from var_list dictionary
         channels = self.var_list['ei_dsp_config_image_t_channels'].lower()
@@ -340,7 +343,7 @@ class EdgeImpulse2GstDRPAI:
         Raises:
             AssertionError: If the number of labels does not match the expected label count.
         """
-        file_path = f"{self.model_name}/{self.model_name}_labels.txt"
+        file_path = f"{self.model_path}/{self.model_name}_labels.txt"
 
         # Retrieve labels from var_list dictionary
         labels = self.var_list['ei_classifier_inferencing_categories']
@@ -361,7 +364,7 @@ class EdgeImpulse2GstDRPAI:
         Raises:
             AssertionError: If no output grids are found in the `var_list`.
         """
-        file_path = f"{self.model_name}/{self.model_name}_data_out_list.txt"
+        file_path = f"{self.model_path}/{self.model_name}_data_out_list.txt"
 
         # Retrieve output grid sizes from var_list dictionary
         grid_sizes = [k for k in self.var_list.keys() if k.startswith("NUM_GRID_")]
@@ -391,7 +394,7 @@ class EdgeImpulse2GstDRPAI:
         Raises:
             AssertionError: If the model classification or version is not supported, or if the IOU threshold is invalid.
         """
-        file_path = f"{self.model_name}/{self.model_name}_post_process_params.txt"
+        file_path = f"{self.model_path}/{self.model_name}_post_process_params.txt"
 
         # Retrieve the model classification from var_list dictionary
         self.model_classification = self.var_list["EI_CLASSIFIER_OBJECT_DETECTION_LAST_LAYER"]
@@ -453,7 +456,7 @@ class EdgeImpulse2GstDRPAI:
             i += 1
             grid_var_key = f"NUM_GRID_{i+1}"
 
-        file_path = f"{self.model_name}/{self.model_name}_anchors.txt"
+        file_path = f"{self.model_path}/{self.model_name}_anchors.txt"
         logging.info("  Writing file: " + file_path)
 
         # Find anchor values and write them to the text file
