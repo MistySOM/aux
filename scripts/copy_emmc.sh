@@ -4,4 +4,5 @@
 
 #!/bin/bash
 
+mount /dev/mmcblk0p1 /mnt
 rsync -aAHXx --partial --info=progress2 --numeric-ids / /mnt
