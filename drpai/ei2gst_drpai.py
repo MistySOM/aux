@@ -503,7 +503,7 @@ if __name__ == '__main__':
         model_name (str): The folder and prefix of files to create.
     
     Example:
-        $ python3 ei2gst-drpai.py model
+        $ python3 ei2gst_drpai.py model
     """
 
     parser = argparse.ArgumentParser(prog='EdgeImpulse2GstDRPAI',
