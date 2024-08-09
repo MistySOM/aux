@@ -30,7 +30,7 @@ To run the script, follow the instructions below:
 3. Run the script with one parameter which is the name of the folder and prefix of files to create:
    
    ```bash
-   python3 ei2gst-drpai.py yolov5
+   python3 ei2gst_drpai.py yolov5
    ```
 
    <details>
