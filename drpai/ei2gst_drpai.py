@@ -3,6 +3,7 @@ import os
 import argparse
 import tflite_runtime.interpreter as tflite
 import numpy as np
+import logging
 
 
 def csv_2_bytearray(s: str) -> bytearray:
@@ -94,7 +95,7 @@ class EdgeImpulse2GstDRPAI:
         self.var_list = dict()  # Dictionary to hold keys and values read from header files
         self.model_name = model_name
         self.model_classification = None    # This variable is filled after running gen_postprocess_params_txt()
-        print(f"Creating folder: {model_name}")
+        logging.info(f"Creating folder: {model_name}")
         os.makedirs(model_name, exist_ok=True)
 
     def __arrayname_2_filename(self, array_name: str) -> str:
@@ -145,7 +146,7 @@ class EdgeImpulse2GstDRPAI:
         """
 
         file_path = "tflite-model/drpai_model.h"
-        print("Reading file: " + file_path)
+        logging.info("Reading file: " + file_path)
         output_file_size = 0        # the size of the last output file
         output_file_path = None     # the path of the last output file
         with open(file_path, "rt") as f:
@@ -160,7 +161,7 @@ class EdgeImpulse2GstDRPAI:
                             # Generate the `output_file_path` from its name.
                             output_file_path = self.__arrayname_2_filename(line)
                             self.var_list[output_file_path] = bytearray()
-                            print("  Writing file: " + output_file_path)
+                            logging.info("  Writing file: " + output_file_path)
                         else:
                             # We have a scalar variable declaration.
                             # Store it in the `var_list` dictionary.
@@ -194,7 +195,7 @@ class EdgeImpulse2GstDRPAI:
         """
 
         file_path = "model-parameters/model_metadata.h"
-        print("Reading file: " + file_path)
+        logging.info("Reading file: " + file_path)
         struct_variables = None     # A list of variable names when they are grouped in a structure
         with open(file_path, "rt") as f:
             # Read the C header file line by line.
@@ -233,7 +234,7 @@ class EdgeImpulse2GstDRPAI:
                             struct_variables.append(name)
 
         file_path = "model-parameters/model_variables.h"
-        print("Reading file: " + file_path)
+        logging.info("Reading file: " + file_path)
         struct_variables = list()   # A list of variable names when they are grouped in a structure
         with (open(file_path, "rt") as f):
             # Read the C header file line by line.
@@ -289,7 +290,7 @@ class EdgeImpulse2GstDRPAI:
         # We also need to store the address and sizes of each model file in `var_list` dictionary.
         # They are included in `model/model_addrmap_intm.txt` in a format of `NAME HEX_ADDRESS HEX_SIZE` lines.
         file_path = f"{self.model_name}/{self.model_name}_addrmap_intm.txt"
-        print("Reading file: " + file_path)
+        logging.info("Reading file: " + file_path)
         with open(file_path, "rt") as f:
             # Read the text file line by line.
             for line in f:
@@ -321,7 +322,7 @@ class EdgeImpulse2GstDRPAI:
         assert channels is not None and width is not None and height is not None, \
             "The loaded model_variables.h doesn't have required input items."
 
-        print("  Writing file: " + file_path)
+        logging.info("  Writing file: " + file_path)
         with open(file_path, "wt") as f:
             f.write(f"Input_node_name: {channels}_data\n"
                     f"         Address: 0x{address}\n"
@@ -346,7 +347,7 @@ class EdgeImpulse2GstDRPAI:
         # Ensure the number of labels matches the expected label count
         assert len(labels) == int(self.var_list['EI_CLASSIFIER_LABEL_COUNT']), "The loaded labels seems to be corrupt."
 
-        print("  Writing file: " + file_path)
+        logging.info("  Writing file: " + file_path)
         with open(file_path, "wt") as f:
             f.write("\n".join(labels))  # Write the labels, each on a new line
 
@@ -367,7 +368,7 @@ class EdgeImpulse2GstDRPAI:
         # Ensure there are output grids available
         assert len(grid_sizes) > 0, "The loaded drpai_model.h doesn't have the required output grids."
 
-        print("  Writing file: " + file_path)
+        logging.info("  Writing file: " + file_path)
         with open(file_path, "wt") as f:
             for grid_size_param in grid_sizes:
                 grid_size = self.var_list[grid_size_param]
@@ -417,7 +418,7 @@ class EdgeImpulse2GstDRPAI:
         assert model_version is not None, f"The script doesn't support classification version '{self.model_classification}'."
 
 
-        print("  Writing file: " + file_path)
+        logging.info("  Writing file: " + file_path)
         with open(file_path, "wt") as f:
             f.write("[dynamic_library]\n" +
                     post_process_library +
@@ -437,7 +438,7 @@ class EdgeImpulse2GstDRPAI:
         """
         model_path = f"{self.model_name}/yolov5.part2"
 
-        print("Reading file: " + model_path)
+        logging.info("Reading file: " + model_path)
 
         # Initialize the TensorFlow Lite interpreter for the YOLOv5 model
         interpreter = tflite.Interpreter(model_path=model_path)
@@ -453,7 +454,7 @@ class EdgeImpulse2GstDRPAI:
             grid_var_key = f"NUM_GRID_{i+1}"
 
         file_path = f"{self.model_name}/{self.model_name}_anchors.txt"
-        print("  Writing file: " + file_path)
+        logging.info("  Writing file: " + file_path)
 
         # Find anchor values and write them to the text file
         with open(file_path, "wt") as f:
