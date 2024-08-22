@@ -3,7 +3,7 @@ import os
 import argparse
 import tflite_runtime.interpreter as tflite
 import numpy as np
-import logging
+from loguru import logger as logging
 
 
 def csv_2_bytearray(s: str) -> bytearray:
@@ -490,7 +490,7 @@ class EdgeImpulse2GstDRPAI:
         self.gen_labels_txt()
         self.gen_data_out_list_txt()
         self.gen_postprocess_params_txt()
-        if "yolo" in self.model_classification:
+        if "yolo" in self.model_classification.lower():
             self.gen_anchors_txt()
 
 
