@@ -4,6 +4,7 @@ import argparse
 import tflite_runtime.interpreter as tflite
 import numpy as np
 from loguru import logger as logging
+from typing import Tuple, List
 
 
 def csv_2_bytearray(s: str) -> bytearray:
@@ -32,7 +33,7 @@ def csv_2_bytearray(s: str) -> bytearray:
     return r
 
 
-def get_grid_anchors(interpreter: tflite.Interpreter, grids: list[int]) -> tuple[int, list]:
+def get_grid_anchors(interpreter: tflite.Interpreter, grids: List[int]) -> Tuple[int, list]:
     """
     Retrieves grid anchors from the TensorFlow Lite interpreter.
 
@@ -116,8 +117,8 @@ class EdgeImpulse2GstDRPAI:
             >>> self.__arrayname_2_filename('unsigned char ei_ei_addrmap_intm_txt[] = {')
             'model/model_addrmap_intm.txt'
         """
-        array_name = array_name.removeprefix("unsigned char ")
-        array_name = array_name.removeprefix("ei_")
+        array_name = array_name.replace("unsigned char ", "")
+        array_name = array_name.replace("ei_", "")
         array_name = array_name.replace("ei_", f"{self.model_name}_")
         array_name = array_name.replace("[]", "")
         array_name = array_name.replace("=", "")
@@ -170,7 +171,7 @@ class EdgeImpulse2GstDRPAI:
                             # Store it in the `var_list` dictionary.
                             line_sections = line.split(" ")
                             key = line_sections[-3]
-                            value = line_sections[-1].removesuffix("\n").removesuffix(";")
+                            value = line_sections[-1].replace("\n", "").replace(";", "")
                             self.var_list[key] = value
                             if key.endswith("_len"):
                                 # Ensure the length of the last array is correct.
@@ -187,7 +188,7 @@ class EdgeImpulse2GstDRPAI:
                         gc.collect()
                     else:
                         # The C array has not ended yet, so convert hex values to binary and append.
-                        self.var_list[output_file_path] += csv_2_bytearray(line.removesuffix("\n"))
+                        self.var_list[output_file_path] += csv_2_bytearray(line.replace("\n", ""))
 
     def read_variables(self):
         """
@@ -224,7 +225,7 @@ class EdgeImpulse2GstDRPAI:
                     if len(line_sections) >= 2:
                         # The line probably looks like `type name;`, `type * name;`, `type *name;` or `} name;`
                         # We only care about the last word which is a name.
-                        name = line_sections[-1].removeprefix("*").removesuffix(";")
+                        name = line_sections[-1].replace("*", "").replace(";", "")
                         if line_sections[0] == "}":
                             # The struct definition is finished
                             # Let's add all the variable names to the dictionary with a prefix of the struct name.
@@ -239,7 +240,7 @@ class EdgeImpulse2GstDRPAI:
         file_path = f"{self.working_directory}/model-parameters/model_variables.h"
         logging.info("Reading file: " + file_path)
         struct_variables = list()   # A list of variable names when they are grouped in a structure
-        with (open(file_path, "rt") as f):
+        with open(file_path, "rt") as f:
             # Read the C header file line by line.
             for line in f:
                 # By splitting the line into words, we can look for C language keywords
@@ -255,7 +256,7 @@ class EdgeImpulse2GstDRPAI:
                         if "[]" in line:
                             # It is defining an array
                             # Let's extract its contents into a list and save it in the `var_list`
-                            name = line_sections[line_sections.index("=")-1].removesuffix("[]")
+                            name = line_sections[line_sections.index("=")-1].replace("[]", "")
                             value = line[line.find("{")+1: line.find("}")]
                             value = value.replace("\"", "").replace(" ", "")
                             self.var_list[name] = value.split(",")
@@ -280,13 +281,13 @@ class EdgeImpulse2GstDRPAI:
                             if line_sections[0] == "const":
                                 # Delete the const keyword
                                 del line_sections[0]
-                            self.var_list[line_sections[1]] = line_sections[-1].removesuffix(";")
+                            self.var_list[line_sections[1]] = line_sections[-1].replace(";", "")
                 else:
                     # We are in the middle of a struct initialization.
                     # The order of values match the order of variable names at the declaration time.
                     # Variable names are already selected in `struct_variables`.
                     # Let's assign values to the first item and remove. It will eventually become empty.
-                    value = line_sections[0].removesuffix(",").removeprefix("\"").removesuffix("\"")
+                    value = line_sections[0].replace(",", "").replace("\"", "").replace("\"", "")
                     self.var_list[struct_variables[0]] = value
                     del struct_variables[0]
 
