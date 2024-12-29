@@ -32,7 +32,7 @@ def csv_2_bytearray(s: str) -> bytearray:
     return r
 
 
-def get_grid_anchors(interpreter: tflite.Interpreter, grids: list[int]) -> (int, list[list[int]]):
+def get_grid_anchors(interpreter: tflite.Interpreter, grids: list[int]) -> tuple[int, list]:
     """
     Retrieves grid anchors from the TensorFlow Lite interpreter.
 
@@ -74,7 +74,7 @@ def get_grid_anchors(interpreter: tflite.Interpreter, grids: list[int]) -> (int,
                     return g, [list(tensor[0][j][0][0]) for j in range(3)]
 
         except ValueError:
-            raise "No anchors found for the provided grids not found in the interpreter."
+            raise Exception("No anchors found for the provided grids not found in the interpreter.")
 
 
 class EdgeImpulse2GstDRPAI:
@@ -423,14 +423,9 @@ class EdgeImpulse2GstDRPAI:
 
         logging.info("  Writing file: " + file_path)
         with open(file_path, "wt") as f:
-            f.write("[dynamic_library]\n" +
-                    post_process_library +
-                    "\n\n"
-                    "[yolo_version]\n" +
-                    model_version +
-                    "\n\n"
-                    "[iou_threshold]\n" +
-                    iou_threshold)
+            f.write(f"[dynamic_library]\n{post_process_library}\n\n"
+                    f"[yolo_version]\n{model_version}\n\n"
+                    f"[iou_threshold]\n{iou_threshold}")
 
     def gen_anchors_txt(self):
         """
