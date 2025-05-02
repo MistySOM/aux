@@ -99,6 +99,7 @@ class EdgeImpulse2GstDRPAI:
         self.working_directory = working_directory
         self.model_path = f"{working_directory}/{model_name}"
         self.model_classification = None    # This variable is filled after running gen_postprocess_params_txt()
+        self.is_tvm = False                 # This variable is filled after running gen_drpai_model_files()
         logging.info(f"Creating folder: {self.model_path}")
         os.makedirs(self.model_path, exist_ok=True)
 
@@ -117,6 +118,7 @@ class EdgeImpulse2GstDRPAI:
             >>> self.__arrayname_2_filename('unsigned char ei_ei_addrmap_intm_txt[] = {')
             'model/model_addrmap_intm.txt'
         """
+        array_name = array_name.replace("const ", "", 1)
         array_name = array_name.replace("unsigned char ", "", 1)
         array_name = array_name.replace("ei_", "", 1)
         array_name = array_name.replace("ei_", f"{self.model_name}_")
@@ -124,7 +126,17 @@ class EdgeImpulse2GstDRPAI:
         array_name = array_name.replace("=", "")
         array_name = array_name.replace("{", "")
         partial_name = array_name.strip().split("_")
-        return f"{self.model_path}/{'_'.join(partial_name[:-1])}.{partial_name[-1]}"
+
+        file_name = self.model_path
+        if self.is_tvm:
+            if partial_name[0] == 'preprocess':
+                partial_name.pop(0)
+                file_name += "/preprocess"
+                os.makedirs(file_name, exist_ok=True)
+
+        file_name += f"/{'_'.join(partial_name[:-1])}.{partial_name[-1]}"
+
+        return file_name
 
     def gen_drpai_model_files(self):
         """
@@ -158,9 +170,13 @@ class EdgeImpulse2GstDRPAI:
             for line in f:
                 # Are we currently in the middle of writing a binary file?
                 if output_file_path is None:
-                    if "=" in line:
-                        # This line is a declaration/assignment.
+                    if "const unsigned" in line and "=" in line:
+                        # This line is a byte array declaration/assignment.
                         if "[]" in line:
+                            if "deploy_so" in line:
+                                self.is_tvm = True
+                                logging.info("  Found TVM compiled model.")
+
                             # We have a new C array declaration.
                             # Generate the `output_file_path` from its name.
                             output_file_path = self.__arrayname_2_filename(line)
@@ -174,6 +190,8 @@ class EdgeImpulse2GstDRPAI:
                             value = line_sections[-1].replace("\n", "").replace(";", "")
                             self.var_list[key] = value
                             if key.endswith("_len"):
+                                if key == "model_h_files_len":
+                                    continue
                                 # Ensure the length of the last array is correct.
                                 assert output_file_size == int(value), f"{output_file_path} seems to be corrupt."
                 else:
@@ -291,8 +309,11 @@ class EdgeImpulse2GstDRPAI:
                     self.var_list[struct_variables[0]] = value
                     del struct_variables[0]
 
-        # We also need to store the address and sizes of each model file in `var_list` dictionary.
-        # They are included in `model/model_addrmap_intm.txt` in a format of `NAME HEX_ADDRESS HEX_SIZE` lines.
+    def read_addrmap_intm(self):
+        """
+        Stores the address and sizes of each model file in the `var_list` dictionary.
+        They are included in `model/model_addrmap_intm.txt` in a format of `NAME HEX_ADDRESS HEX_SIZE` lines.
+        """
         file_path = f"{self.model_path}/{self.model_name}_addrmap_intm.txt"
         logging.info("Reading file: " + file_path)
         with open(file_path, "rt") as f:
@@ -319,7 +340,7 @@ class EdgeImpulse2GstDRPAI:
 
         # Retrieve required variables from var_list dictionary
         channels = self.var_list['ei_dsp_config_image_t_channels'].lower()
-        address = self.var_list['data_in_address']
+        address = self.var_list['data_in_address'] if not self.is_tvm else 0
         width = self.var_list['EI_CLASSIFIER_INPUT_WIDTH']
         height = self.var_list['EI_CLASSIFIER_INPUT_HEIGHT']
         # Ensure all necessary variables are present
@@ -482,12 +503,14 @@ class EdgeImpulse2GstDRPAI:
         """
         self.gen_drpai_model_files()
         self.read_variables()           # Fills the `var_list` dictionary
+        if not self.is_tvm:
+            self.read_addrmap_intm()
+            self.gen_data_out_list_txt()
+            if "yolo" in self.model_classification.lower():
+                self.gen_anchors_txt()
         self.gen_data_in_list_txt()
         self.gen_labels_txt()
-        self.gen_data_out_list_txt()
         self.gen_postprocess_params_txt()
-        if "yolo" in self.model_classification.lower():
-            self.gen_anchors_txt()
 
 
 if __name__ == '__main__':
